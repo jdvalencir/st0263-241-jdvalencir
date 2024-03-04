@@ -1,0 +1,22 @@
+# Utiliza la imagen oficial de Node.js como base
+FROM node:16
+
+# Crea el directorio de la aplicación
+WORKDIR /usr/src/app
+
+# Instala las dependencias de la aplicación
+# El archivo package.json y package-lock.json se copian en ./
+COPY package*.json ./
+
+RUN npm install
+
+# Copia los archivos del proyecto al contenedor excepto lo que esté definido en .dockerignore
+COPY . .
+
+# Expone el puerto que tu servidor Node.js estará escuchando
+EXPOSE 50051
+
+# Define la variable de entorno para el archivo .env
+# Aquí puedes establecer valores predeterminados o dejarlos configurables en tiempo de ejecución
+# Comando para ejecutar la aplicación
+CMD [ "node", "server.js" ]
