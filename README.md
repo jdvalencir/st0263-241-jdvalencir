@@ -1,56 +1,92 @@
-# info de la materia: ST0263-241 Topicos Especiales En Telemática
-#
-# Estudiante(s): Julián David Valencia Restrepo
-#
-# Profesor: Edwin Nelson Montoya Munera, emontoya@eafit.edu.co
-#
+# Course info: ST0263-241 Special Topics in Telematics
 
-# Reto 1 y 2 P2P
-#
-# 1. breve descripción de la actividad
-#
-Este es un proyecto de sistema Peer-to-Peer (P2P) para la transferencia de archivos. El proyecto está estructurado en múltiples componentes que representan diferentes nodos y un servidor central.
-## 1.1. Que aspectos cumplió o desarrolló de la actividad propuesta por el profesor (requerimientos funcionales y no funcionales)
-## Requerimientos Funcionales
+**Student:** Julián David Valencia Restrepo
 
-1. Conectividad Peer-to-Peer: Los peers deben poder conectarse entre sí para compartir archivos.
-2. Servidor Central: Debe existir un servidor central que facilite el descubrimiento de peers y archivos.
-3. Transferencia de Archivos: Los peers deben ser capaces de subir y descargar archivos de otros peers.
+**Professor:** Edwin Nelson Montoya Munera
 
-## Requerimientos No Funcionales
+# Challenge 1 and 2: P2P
 
-1. Escalabilidad: El sistema debe poder manejar un aumento en el número de peers sin degradación significativa del rendimiento.
+## 1. Brief description of the activity
 
+A Peer-to-Peer (P2P) file transfer system. The project is split into several components that represent different nodes (peers) and a central server.
 
-## 1.2. Que aspectos NO cumplió o desarrolló de la actividad propuesta por el profesor (requerimientos funcionales y no funcionales)
+### 1.1. What was completed from the professor's requirements (functional and non-functional)
 
-1. No se cumplió con el despliegue en AWS
+#### Functional requirements
 
-# 2. información general de diseño de alto nivel, arquitectura, patrones, mejores prácticas utilizadas.
+1. Peer-to-peer connectivity: peers must be able to connect to each other to share files.
+2. Central server: there must be a central server that supports discovery of peers and files.
+3. File transfer: peers must be able to upload files to and download files from other peers.
 
-![Screenshot from 2024-03-03 23-25-07](https://github.com/jdvalencir/st0263-241-jdvalencir/assets/88250984/682bde1f-71d6-4c97-aa7e-66edf9923eac)
+#### Non-functional requirements
 
+1. Scalability: the system must handle a growing number of peers without significant performance degradation.
 
-# 3. Descripción del ambiente de desarrollo y técnico: lenguaje de programación, librerias, paquetes, etc, con sus numeros de versiones.
+### 1.2. What was NOT completed
 
-- Se utilizó fastAPI para el server central y node js para el cliente y el pserver
-## Estructura de Directorios
+1. Deployment on AWS was not done.
 
-- `Peer`: Contiene los archivos relacionados con la funcionalidad del peer en la red.
-  - `files`: Directorio para almacenar archivos que el peer puede compartir.
-  - `Pclient`: Contiene el código del cliente P2P.
-  - `Pserver`: Contiene el código del servidor P2P.
+# 2. High-level design, architecture, patterns and best practices
 
-- `ServerCentral`: Directorio que contiene los archivos relacionados con el servidor central.
-  - `dockerfile`: Definición para construir la imagen Docker para el servidor central.
-  - `main.py`: Punto de entrada principal para el servidor central.
-  - `requirements.txt`: Lista de dependencias necesarias para ejecutar el servidor central.
-  - `.gitignore`: Especifica los archivos no rastreados que Git debe ignorar.
-  - `readme.md`: Este archivo.
-  - 
+![Architecture screenshot](https://github.com/jdvalencir/st0263-241-jdvalencir/assets/88250984/682bde1f-71d6-4c97-aa7e-66edf9923eac)
 
+From the code:
 
-# referencias:
-[dockerHub](https://hub.docker.com/) 
-[docker](https://docs.docker.com/)
-[GRCP docs](https://grpc.io/docs/languages/node/basics/)
+- Each peer has a **PServer** (Node.js, gRPC server) that serves and receives files from its `files` directory, and a **PClient** (Node.js CLI) that asks the user to download or upload a file by name.
+- The **central server** (FastAPI) keeps an in-memory registry of PServers and their file indexes. Endpoints under `/api/v1/`: `pserver_login`, `check_peers_status` (heartbeat), `get_ip_list` (which PServers have a file), `upload_round_robin` (picks another PServer to upload to) and `update_list`.
+- PServers that do not check in for 30 seconds are removed from the registry.
+- File transfer between peers uses gRPC (`protobuf/file_transfer.proto`); the clients reach the central server over HTTP (axios).
+
+# 3. Development environment
+
+- Central server: Python 3.9 (Docker image), FastAPI 0.68.0, Uvicorn 0.15.0, Pydantic 1.8.2, httpx 0.19.0.
+- PServer / PClient: Node.js with `@grpc/grpc-js`, `@grpc/proto-loader`, `axios`, `dotenv` (and `prompt-sync` for the client).
+
+## Directory structure
+
+- `Peer`, `Peer2`, `Peer3`: three copies of a peer.
+  - `files`: files the peer can share.
+  - `Pclient`: P2P client code.
+  - `Pserver`: P2P server code (includes a `dockerfile` and `docker-compose.yml`).
+- `ServerCentral`: central server.
+  - `main.py`: FastAPI application.
+  - `requirements.txt`: Python dependencies.
+  - `dockerfile`: image for the central server (serves on port 8000 with Uvicorn).
+
+## Getting started
+
+Central server:
+
+```bash
+cd ServerCentral
+pip install -r requirements.txt
+uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+or with Docker:
+
+```bash
+cd ServerCentral
+docker build -t central-server .
+docker run -p 8000:8000 central-server
+```
+
+Peer (each `src` directory has its own `.env` configuration file):
+
+```bash
+cd Peer/Pserver/src
+npm install
+npm start          # node server.js
+
+cd Peer/Pclient/src
+npm install
+node client.js
+```
+
+Note: the `docker-compose.yml` in `Pserver/src` references Dockerfile paths (`./PServer/Dockerfile`, `./PClient/Dockerfile`, `./serverCentral/Dockerfile`) that do not match this repository layout, so it likely needs adjusting before use.
+
+# References
+
+- [Docker Hub](https://hub.docker.com/)
+- [Docker docs](https://docs.docker.com/)
+- [gRPC docs (Node)](https://grpc.io/docs/languages/node/basics/)
